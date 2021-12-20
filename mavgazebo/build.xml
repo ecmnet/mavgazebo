@@ -1,0 +1,10 @@
+<project name="PMAVLink generator" basedir=".">
+
+
+	<target name="mvn">
+		    <exec dir="." executable="sh">
+		        <arg line="-c '/usr/local/Cellar/maven/3.6.3_1/bin/mvn clean install'" />
+		    </exec>
+		</target>
+
+</project>
