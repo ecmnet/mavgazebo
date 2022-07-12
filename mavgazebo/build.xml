@@ -1,10 +1,15 @@
 <project name="PMAVLink generator" basedir=".">
 
+	<target name="protoc">
+	    <exec dir="." executable="sh">
+			        <arg line="-c '/usr/local/Cellar/protobuf/3.19.4/bin/protoc -I=gazebo/msgs --java_out=src/main/java/ gazebo/msgs/*'" />
+			    </exec>
+		</target>
 
 	<target name="mvn">
 		    <exec dir="." executable="sh">
 		        <arg line="-c '/usr/local/Cellar/maven/3.6.3_1/bin/mvn clean install'" />
 		    </exec>
-		</target>
+	</target>
 
 </project>

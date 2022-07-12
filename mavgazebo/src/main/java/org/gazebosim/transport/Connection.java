@@ -7,6 +7,8 @@
 
 package org.gazebosim.transport;
 
+import java.io.BufferedInputStream;
+import java.io.BufferedOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -50,6 +52,7 @@ public class Connection {
 		this.host = host;
 		this.port = port;
 		socket = new Socket(host, port);
+		socket.setReceiveBufferSize(8192*1024);
 		is = socket.getInputStream();
 		os = socket.getOutputStream();
 	}
@@ -60,6 +63,7 @@ public class Connection {
 		while (true) {
 			try {
 				socket = new Socket(host, port);
+				socket.setReceiveBufferSize(8192*1024);
 				break;
 			} catch (ConnectException ex) {
 				// Retry.
@@ -125,14 +129,15 @@ public class Connection {
 				LOG.severe("Only read "+n+" bytes instead of 8 for header.");
 				return null;
 			}
-			int size = Integer.parseInt(new String(buff), 16);
+
+			int size=0;
+			try {
+			   size = Integer.parseInt(new String(buff), 16);
+			} catch(NumberFormatException e) { }
 		
 			// Read in the actual message
 			buff = new byte[size];
 			n = is.read(buff);
-			if (n != size) {
-				throw new IOException("Failed to read whole message");
-			}
 			
 			return buff;
 		}

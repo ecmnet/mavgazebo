@@ -5,11 +5,14 @@ import org.gazebosim.transport.Subscriber;
 import org.gazebosim.transport.SubscriberCallback;
 
 import gazebo.msgs.ImageStampedOuterClass.ImageStamped;
+import nav_msgs.msgs.OdometryOuterClass.Odometry;
 
-public class DeptCameraExample {
+public class OdometryExample {
 	
 	private static double simTime = 0;
-	private static Subscriber<ImageStamped> sub;
+	private static Subscriber<Odometry> sub;
+	
+	private static Odometry msg;
 
 
 	public static void main(String[] args) {
@@ -18,21 +21,21 @@ public class DeptCameraExample {
 		Node node = new Node("default");
 		try {
 			node.waitForConnection();
+		
 			
-			sub = node.subscribe("iris/front_camera/link/depth_camera/image", ImageStamped.getDefaultInstance(),
-					new SubscriberCallback<ImageStamped>() {
-						@Override
-						public void callback(ImageStamped msg) {
-							System.out.println(msg.getTime());
-							synchronized(sub) {
-								sub.notifyAll();
-							}
-						}
-					}
-				);
+			sub = node.subscribe("iris_vision/vision_odom", Odometry.getDefaultInstance(), 
+			 (m) -> {
+				 msg = m;
+				synchronized(sub) {
+					sub.notifyAll();
+			 }
+			});
 
 
 			while(true) {
+				
+				if(msg!=null)
+				System.out.println(msg.getTimeUsec()+":"+msg.getLinearVelocity().getX());
 
 				Thread.sleep(100);
 			}

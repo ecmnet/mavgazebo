@@ -101,11 +101,13 @@ public final class AxisOuterClass {
 
     /**
      * <code>required bool use_parent_model_frame = 8 [deprecated = true];</code>
+     * @deprecated
      * @return Whether the useParentModelFrame field is set.
      */
     @java.lang.Deprecated boolean hasUseParentModelFrame();
     /**
      * <code>required bool use_parent_model_frame = 8 [deprecated = true];</code>
+     * @deprecated
      * @return The useParentModelFrame.
      */
     @java.lang.Deprecated boolean getUseParentModelFrame();
@@ -405,6 +407,7 @@ public final class AxisOuterClass {
     private boolean useParentModelFrame_;
     /**
      * <code>required bool use_parent_model_frame = 8 [deprecated = true];</code>
+     * @deprecated
      * @return Whether the useParentModelFrame field is set.
      */
     @java.lang.Override
@@ -413,6 +416,7 @@ public final class AxisOuterClass {
     }
     /**
      * <code>required bool use_parent_model_frame = 8 [deprecated = true];</code>
+     * @deprecated
      * @return The useParentModelFrame.
      */
     @java.lang.Override
@@ -1432,6 +1436,7 @@ public final class AxisOuterClass {
       private boolean useParentModelFrame_ ;
       /**
        * <code>required bool use_parent_model_frame = 8 [deprecated = true];</code>
+       * @deprecated
        * @return Whether the useParentModelFrame field is set.
        */
       @java.lang.Override
@@ -1440,6 +1445,7 @@ public final class AxisOuterClass {
       }
       /**
        * <code>required bool use_parent_model_frame = 8 [deprecated = true];</code>
+       * @deprecated
        * @return The useParentModelFrame.
        */
       @java.lang.Override
@@ -1448,6 +1454,7 @@ public final class AxisOuterClass {
       }
       /**
        * <code>required bool use_parent_model_frame = 8 [deprecated = true];</code>
+       * @deprecated
        * @param value The useParentModelFrame to set.
        * @return This builder for chaining.
        */
@@ -1459,6 +1466,7 @@ public final class AxisOuterClass {
       }
       /**
        * <code>required bool use_parent_model_frame = 8 [deprecated = true];</code>
+       * @deprecated
        * @return This builder for chaining.
        */
       @java.lang.Deprecated public Builder clearUseParentModelFrame() {

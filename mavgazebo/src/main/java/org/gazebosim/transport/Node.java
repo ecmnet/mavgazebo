@@ -25,7 +25,7 @@ import com.google.protobuf.Message;
 
 import gazebo.msgs.GzString;
 import gazebo.msgs.GzStringOuterClass;
-import gazebo.msgs.GzStringV;
+
 import gazebo.msgs.PacketOuterClass.Packet;
 import gazebo.msgs.PublishOuterClass.Publish;
 import gazebo.msgs.PublishersOuterClass.Publishers;

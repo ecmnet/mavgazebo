@@ -12,6 +12,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.logging.Logger;
 
+import com.google.protobuf.InvalidProtocolBufferException;
 import com.google.protobuf.Message;
 import com.google.protobuf.Parser;
 
@@ -69,8 +70,12 @@ public class Subscriber<T extends Message> {
 					connections.remove(conn);
 					return;
 				}
-				T msg = deserializer.parseFrom(data);
+			    try {
+				  T msg = deserializer.parseFrom(data);
 				cb.callback(msg);
+			    } catch(InvalidProtocolBufferException p) {
+			    	System.err.println(p.getMessage());
+			    }
 			}
 		} catch (IOException e) {
 			// FIXME: Connection lost, let's make sure it's closed and complain.
