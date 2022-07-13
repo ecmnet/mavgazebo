@@ -22,10 +22,12 @@ public class StreamGazeboVision {
 	private final List<IGazeboPoseCallback> callbacks     = new ArrayList<IGazeboPoseCallback>();
 	private final Node node = new Node("default");
 	private  Subscriber<Odometry> sub;
-	
-	private long tms0; 
+
+	private static long tms0; 
 	private long tms;
 	private int  fps;
+
+	private long c = 0;
 
 
 	public static StreamGazeboVision getInstance(int width, int height) {
@@ -35,7 +37,7 @@ public class StreamGazeboVision {
 	}
 
 	private  StreamGazeboVision(int width, int height) {
-		
+
 	}
 
 	public StreamGazeboVision registerCallback(IGazeboPoseCallback callback) {
@@ -44,52 +46,61 @@ public class StreamGazeboVision {
 	}
 
 	public void start() {
-		
+
 		final Se3_F64    current_pose         = new Se3_F64();
 		final Se3_F64    current_speed        = new Se3_F64();
 		final Se3_F64    current_acceleration = new Se3_F64();
-		
-		try {
-			
-			node.waitForConnection();
-			
-			
-			sub = node.subscribe("iris_vision/vision_odom", Odometry.getDefaultInstance(), (msg) -> {
-				
-				tms = System.currentTimeMillis();
-				
-				current_pose.T.setTo (msg.getPosition().getY(),msg.getPosition().getX(),-msg.getPosition().getZ());
-				current_speed.T.setTo(msg.getLinearVelocity().getY(),msg.getLinearVelocity().getX(),-msg.getLinearVelocity().getZ());
-				
-				ConvertRotation3D_F64.quaternionToMatrix(
-						msg.getOrientation().getW(),
-						msg.getOrientation().getX(),
-						msg.getOrientation().getY(),
-						msg.getOrientation().getZ(), current_pose.getRotation());
-				
-				if(tms!=tms0)
-					fps = (int)(1000.0f/(tms - tms0));
-				
-				tms0 = tms;
 
-				for(IGazeboPoseCallback callback : callbacks)
-					callback.handle(tms, 1, current_pose, current_speed, current_acceleration);
-				
+		try {
+
+			node.waitForConnection();
+
+			System.out.println("Subcribing to gazebo odometry message ...");
+
+			sub = node.subscribe("iris_vision/vision_odom", Odometry.getDefaultInstance(), (msg) -> {
+
 				synchronized(sub) {
+					
 					sub.notifyAll();
+
+					tms = System.currentTimeMillis();
+
+					// Avoid double trigger
+					if((tms - tms0) < 5)
+						return;
+
+					current_pose.T.setTo (msg.getPosition().getY(),msg.getPosition().getX(),-msg.getPosition().getZ());
+					current_speed.T.setTo(msg.getLinearVelocity().getY(),msg.getLinearVelocity().getX(),-msg.getLinearVelocity().getZ());
+
+					ConvertRotation3D_F64.quaternionToMatrix(
+							msg.getOrientation().getW(),
+							msg.getOrientation().getX(),
+							msg.getOrientation().getY(),
+							msg.getOrientation().getZ(), current_pose.getRotation());
+
+					if(tms!=tms0)
+						fps = (int)(1000.0f/(tms - tms0));
+
+					tms0 = tms;
+
+					for(IGazeboPoseCallback callback : callbacks)
+						callback.handle(tms, 1, current_pose, current_speed, current_acceleration);
+
 				}
+
+
 			});
-			
+
 		} catch (Exception e) {
 			e.printStackTrace();
 		}	
 	}
 
 	public void stop() {
-	
-        
+
+
 	}
-	
+
 	public int getFrameRate() {
 		return fps;
 	}
