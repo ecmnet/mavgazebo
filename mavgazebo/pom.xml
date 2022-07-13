@@ -16,6 +16,11 @@
            <artifactId>protobuf-java</artifactId>
            <version>3.17.3</version>
         </dependency>
+        <dependency>
+			<groupId>org.boofcv</groupId>
+			<artifactId>boofcv-core</artifactId>
+			<version>0.40.1</version>
+		</dependency>
 	</dependencies>
 
 </project>
