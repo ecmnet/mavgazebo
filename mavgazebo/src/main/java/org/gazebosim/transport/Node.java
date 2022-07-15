@@ -192,6 +192,7 @@ public class Node implements Runnable, ServerCallback {
 		} else if (packet.getType().equals("publisher_subscribe") ||
 				   packet.getType().equals("publisher_advertise")) {
 			PublisherRecord pub = new RemotePublisherRecord(Publish.parseFrom(packet.getSerializedData()));
+			
 
 			if (pub.getHost().equals(server.host) && pub.getPort() == server.port) {
 				LOG.info("Ignoring subscription request on (local) "+pub.getTopic());
@@ -246,6 +247,10 @@ public class Node implements Runnable, ServerCallback {
 		} else {
 			LOG.warning("Unknown message type: " + msg.getType());
 		}
+	}
+	
+	public Map<String, PublisherRecord> getPublishedMessages() {
+		return publishers;
 	}
 
 	private String fixTopic(String topic) {
