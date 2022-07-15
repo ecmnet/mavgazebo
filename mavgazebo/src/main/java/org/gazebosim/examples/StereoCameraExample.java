@@ -24,18 +24,18 @@ public class StereoCameraExample {
 			
 			sub = node.subscribe("iris_vision/stereo_camera/link/stereo_camera/images", ImagesStamped.getDefaultInstance(), 
 			 (m) -> {
-				
+				System.out.println(m);
 				synchronized(sub) {
 					sub.notifyAll();
-					System.out.println(m);
+					
 			 }
 			});
 
 
 			while(true) {
 				
-//				if(msg!=null)
-//				System.out.println(msg.getImageCount());
+				if(msg!=null)
+				System.out.println(msg.getImageCount());
 
 				Thread.sleep(100);
 			}

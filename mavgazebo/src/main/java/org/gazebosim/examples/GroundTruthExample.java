@@ -26,7 +26,7 @@ public class GroundTruthExample {
 			
 			sub = node.subscribe("iris_vision/groundtruth", Groundtruth.getDefaultInstance(), 
 			 (m) -> {
-				 msg = m;
+				 System.out.println(m.getTimeUsec()+":"+m.getVelocityUp());
 				synchronized(sub) {
 					sub.notifyAll();
 			 }
@@ -35,9 +35,7 @@ public class GroundTruthExample {
 
 			while(true) {
 				
-				if(msg!=null)
-				System.out.println(msg.getTimeUsec()+":"+msg.getVelocityUp());
-
+				
 				Thread.sleep(100);
 			}
 
