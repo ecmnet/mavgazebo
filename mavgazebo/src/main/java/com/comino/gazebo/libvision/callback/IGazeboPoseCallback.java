@@ -1,8 +1,5 @@
 package com.comino.gazebo.libvision.callback;
 
-
-import boofcv.struct.image.GrayU8;
-import boofcv.struct.image.Planar;
 import georegression.struct.se.Se3_F64;
 
 public interface IGazeboPoseCallback {
