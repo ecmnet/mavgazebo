@@ -84,10 +84,10 @@ public class StreamGazeboVision {
 					current_speed.T.setTo(msg.getLinearVelocity().getY(),msg.getLinearVelocity().getX(),-msg.getLinearVelocity().getZ());
 
 					ConvertRotation3D_F64.quaternionToMatrix(
-							msg.getOrientation().getW(),
-							msg.getOrientation().getX(),
-							msg.getOrientation().getY(),
-							msg.getOrientation().getZ(), current_pose.getRotation());
+						    msg.getOrientation().getW(),
+						    msg.getOrientation().getX(),
+						   -msg.getOrientation().getY(),
+						   -msg.getOrientation().getZ(), current_pose.getRotation());
 
 					if(tms!=tms0)
 						fps = (int)(1000.0f/(tms - tms0));
