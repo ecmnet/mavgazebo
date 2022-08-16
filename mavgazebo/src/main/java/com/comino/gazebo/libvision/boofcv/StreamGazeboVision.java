@@ -11,8 +11,8 @@ import com.comino.gazebo.libvision.callback.IGazeboPoseCallback;
 
 import georegression.geometry.ConvertRotation3D_F64;
 import georegression.struct.se.Se3_F64;
-import nav_msgs.msgs.OdometryOuterClass.Odometry;
-import sensor_msgs.msgs.GroundtruthOuterClass.Groundtruth;
+import msgs.nav_msgs.msgs.OdometryOuterClass.Odometry;
+import msgs.sensor_msgs.msgs.GroundtruthOuterClass.Groundtruth;
 
 
 public class StreamGazeboVision {
@@ -29,8 +29,11 @@ public class StreamGazeboVision {
 	private  Subscriber<Groundtruth> sub_gth;
 
 	private static long tms0; 
-	private long tms;
+	private static long tms;
+	private static long tms_g0; 
+	private static long tms_g;
 	private int  fps;
+	private int  fps_g;
 
 	private long c = 0;
 
@@ -77,7 +80,7 @@ public class StreamGazeboVision {
 					tms = System.currentTimeMillis();
 
 					// Avoid double trigger
-					if((tms - tms0) < 5)
+					if((tms - tms0) < 20)
 						return;
 
 					current_pose.T.setTo (msg.getPosition().getY(),msg.getPosition().getX(),-msg.getPosition().getZ());
@@ -93,7 +96,7 @@ public class StreamGazeboVision {
 						fps = (int)(1000.0f/(tms - tms0));
 
 					tms0 = tms;
-
+					
 					for(IGazeboPoseCallback callback : callbacks_pose)
 						callback.handle(tms, 1, current_pose, current_speed, current_acceleration);
 
@@ -106,8 +109,19 @@ public class StreamGazeboVision {
 			sub_gth = node.subscribe("iris_vision/groundtruth", Groundtruth.getDefaultInstance(), (msg) -> {
 				synchronized(sub_gth) {	
 					sub_gth.notifyAll();	
+					
+					tms_g = System.currentTimeMillis();
+					
+					if((tms_g - tms_g0) < 50)
+						return;
+					
 					for(IGazeboGroundTruthCallback callback : callbacks_groundtruth)
 						callback.handle(tms, msg.getLatitudeRad()* FROM_RAD, msg.getLongitudeRad()* FROM_RAD, msg.getAltitude());	
+					
+					if(tms!=tms0)
+						fps_g = (int)(1000.0f/(tms_g - tms_g0));
+					
+					tms_g0 = tms_g;
 				}
 			});
 			

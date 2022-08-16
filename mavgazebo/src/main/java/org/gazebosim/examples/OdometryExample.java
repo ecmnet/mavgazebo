@@ -4,8 +4,8 @@ import org.gazebosim.transport.Node;
 import org.gazebosim.transport.Subscriber;
 import org.gazebosim.transport.SubscriberCallback;
 
-import gazebo.msgs.ImageStampedOuterClass.ImageStamped;
-import nav_msgs.msgs.OdometryOuterClass.Odometry;
+import msgs.gazebo.msgs.ImageStampedOuterClass.ImageStamped;
+import msgs.nav_msgs.msgs.OdometryOuterClass.Odometry;
 
 public class OdometryExample {
 	

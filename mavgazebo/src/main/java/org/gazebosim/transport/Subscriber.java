@@ -16,7 +16,7 @@ import com.google.protobuf.InvalidProtocolBufferException;
 import com.google.protobuf.Message;
 import com.google.protobuf.Parser;
 
-import gazebo.msgs.SubscribeOuterClass.Subscribe;
+import msgs.gazebo.msgs.SubscribeOuterClass.Subscribe;
 
 
 public class Subscriber<T extends Message> {

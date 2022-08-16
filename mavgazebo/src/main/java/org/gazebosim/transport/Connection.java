@@ -23,8 +23,8 @@ import java.util.logging.Logger;
 import com.google.protobuf.ByteString;
 import com.google.protobuf.Message;
 
-import gazebo.msgs.PacketOuterClass.Packet;
-import gazebo.msgs.TimeOuterClass.Time;
+import msgs.gazebo.msgs.PacketOuterClass.Packet;
+import msgs.gazebo.msgs.TimeOuterClass.Time;
 
 
 /**

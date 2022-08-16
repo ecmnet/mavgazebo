@@ -4,7 +4,7 @@ import org.gazebosim.transport.Node;
 import org.gazebosim.transport.Subscriber;
 import org.gazebosim.transport.SubscriberCallback;
 
-import gazebo.msgs.DiagnosticsOuterClass.Diagnostics;
+import msgs.gazebo.msgs.DiagnosticsOuterClass.Diagnostics;
 
 public class DiagnosticsExample {
 	

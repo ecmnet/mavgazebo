@@ -7,7 +7,7 @@
 
 package org.gazebosim.transport;
 
-import gazebo.msgs.PublishOuterClass.Publish;
+import msgs.gazebo.msgs.PublishOuterClass.Publish;
 
 public class RemotePublisherRecord implements PublisherRecord {
 	private Publish pub;
