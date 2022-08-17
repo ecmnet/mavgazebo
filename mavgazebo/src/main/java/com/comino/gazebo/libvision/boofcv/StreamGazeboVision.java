@@ -33,9 +33,6 @@ public class StreamGazeboVision {
 	private static long tms_g0; 
 	private static long tms_g;
 	private int  fps;
-	private int  fps_g;
-
-	private long c = 0;
 
 
 	public static StreamGazeboVision getInstance(int width, int height) {
@@ -117,9 +114,6 @@ public class StreamGazeboVision {
 					
 					for(IGazeboGroundTruthCallback callback : callbacks_groundtruth)
 						callback.handle(tms, msg.getLatitudeRad()* FROM_RAD, msg.getLongitudeRad()* FROM_RAD, msg.getAltitude());	
-					
-					if(tms!=tms0)
-						fps_g = (int)(1000.0f/(tms_g - tms_g0));
 					
 					tms_g0 = tms_g;
 				}
