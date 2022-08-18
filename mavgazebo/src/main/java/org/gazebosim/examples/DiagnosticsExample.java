@@ -40,7 +40,6 @@ public class DiagnosticsExample {
 
 
 		} catch (Exception e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
 
