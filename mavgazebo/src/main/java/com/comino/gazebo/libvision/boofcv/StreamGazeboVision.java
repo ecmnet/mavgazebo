@@ -55,15 +55,15 @@ public class StreamGazeboVision {
 		return this;
 	}
 
-	public void start() {
+	public void start() throws Exception {
 
 		final Se3_F64    current_pose         = new Se3_F64();
 		final Se3_F64    current_speed        = new Se3_F64();
 		final Se3_F64    current_acceleration = new Se3_F64();
 
-		try {
 
-			node.waitForConnection();
+			if(!node.waitForConnection())
+				throw new Exception("Gazebo not available");
 
 			System.out.print("Subcribing to gazebo messages ...");
 
@@ -121,9 +121,7 @@ public class StreamGazeboVision {
 			
 			System.out.println();
 
-		} catch (Exception e) {
-			e.printStackTrace();
-		}	
+		
 	}
 
 	public void stop() {

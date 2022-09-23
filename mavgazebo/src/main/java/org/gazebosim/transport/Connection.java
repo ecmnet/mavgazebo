@@ -57,10 +57,11 @@ public class Connection {
 		os = socket.getOutputStream();
 	}
 
-	public void connectAndWait(String host, int port) throws IOException, InterruptedException {
+	public boolean connectAndWait(String host, int port) throws IOException, InterruptedException {
 		this.host = host;
 		this.port = port;
-		while (true) {
+		int count = 2;
+		while (--count > 0) {
 			try {
 				socket = new Socket(host, port);
 				socket.setReceiveBufferSize(8192*1024);
@@ -71,8 +72,11 @@ public class Connection {
 				Thread.sleep(5000);
 			}
 		}
+		if(count == 0)
+			return false;
 		is = socket.getInputStream();
 		os = socket.getOutputStream();
+		return true;
 	}
 
 	public void serve(final ServerCallback cb) throws IOException {

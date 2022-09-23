@@ -58,7 +58,7 @@ public class Node implements Runnable, ServerCallback {
 		this.name = name;
 	}
 
-	public void waitForConnection() throws IOException, InterruptedException {
+	public boolean waitForConnection() throws IOException, InterruptedException {
 		//enable user to change master uri via environment variable GAZEBO_MASTER_URI
 		String user_defined_uri = System.getenv("GAZEBO_MASTER_URI");
 		String gazebo_master_uri = "localhost";
@@ -79,12 +79,14 @@ public class Node implements Runnable, ServerCallback {
 
 		LOG.info("GAZEBO_MASTER_URI is host=" + gazebo_master_uri + " port="+port);
 
-		master.connectAndWait(gazebo_master_uri, port);
+		if(!master.connectAndWait(gazebo_master_uri, port))
+			return false;
 
 		initializeConnection();
 
 		new Thread(this).start();
 		LOG.info("Serving on: "+server.host+":"+server.port);
+		return true;
 	}
 
 	public synchronized <T extends Message> Publisher<T> advertise(String topic, T defaultMessage) {
