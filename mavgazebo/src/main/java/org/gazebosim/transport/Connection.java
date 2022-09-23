@@ -67,8 +67,6 @@ public class Connection {
 				socket.setReceiveBufferSize(8192*1024);
 				break;
 			} catch (ConnectException ex) {
-				// Retry.
-				LOG.log(Level.WARNING, "Cannot connect, retrying in five seconds.", ex);
 				Thread.sleep(5000);
 			}
 		}

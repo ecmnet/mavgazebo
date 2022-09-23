@@ -70,6 +70,8 @@ public class StreamGazeboVision {
 			}
 			
 			is_available = true;
+			
+			System.out.println("Gazebo vision plugin started for SITL");
 
 			System.out.print("Subcribing to gazebo messages ...");
 
