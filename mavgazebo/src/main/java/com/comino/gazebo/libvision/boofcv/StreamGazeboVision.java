@@ -34,6 +34,8 @@ public class StreamGazeboVision {
 	private static long tms_g;
 	private int  fps;
 
+	private boolean is_available;
+
 
 	public static StreamGazeboVision getInstance(int width, int height) {
 		if(instance==null)
@@ -62,8 +64,12 @@ public class StreamGazeboVision {
 		final Se3_F64    current_acceleration = new Se3_F64();
 
 
-			if(!node.waitForConnection())
+			if(!node.waitForConnection()) {
+				is_available = false;
 				throw new Exception("Gazebo not available");
+			}
+			
+			is_available = true;
 
 			System.out.print("Subcribing to gazebo messages ...");
 
@@ -122,6 +128,10 @@ public class StreamGazeboVision {
 			System.out.println();
 
 		
+	}
+	
+	public boolean isAvailable() {
+		return is_available;
 	}
 
 	public void stop() {
