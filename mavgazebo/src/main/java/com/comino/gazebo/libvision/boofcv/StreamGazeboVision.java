@@ -71,7 +71,7 @@ public class StreamGazeboVision {
 			
 			is_available = true;
 			
-			System.out.println("Gazebo vision plugin started for SITL");
+			System.out.println("Gazebo vision plugin started for SITL with "+callbacks_pose.size()+" callbacks");
 
 			System.out.print("Subcribing to gazebo messages ...");
 
@@ -83,10 +83,12 @@ public class StreamGazeboVision {
 					sub_odm.notifyAll();
 
 					tms = System.currentTimeMillis();
+					
 
 					// Avoid double trigger
 					if((tms - tms0) < 20)
 						return;
+					
 
 					current_pose.T.setTo (msg.getPosition().getY(),msg.getPosition().getX(),-msg.getPosition().getZ());
 					current_speed.T.setTo(msg.getLinearVelocity().getY(),msg.getLinearVelocity().getX(),-msg.getLinearVelocity().getZ());
@@ -99,11 +101,14 @@ public class StreamGazeboVision {
 
 					if(tms!=tms0)
 						fps = (int)(1000.0f/(tms - tms0));
+					
+				
 
 					tms0 = tms;
 					
-					for(IGazeboPoseCallback callback : callbacks_pose)
-						callback.handle(tms, 1, current_pose, current_speed, current_acceleration);
+					for(IGazeboPoseCallback callback : callbacks_pose) {
+						callback.handle(tms, 100, current_pose, current_speed, current_acceleration);
+					}
 
 				}
 
