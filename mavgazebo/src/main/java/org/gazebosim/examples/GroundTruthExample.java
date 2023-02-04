@@ -2,11 +2,8 @@ package org.gazebosim.examples;
 
 import org.gazebosim.transport.Node;
 import org.gazebosim.transport.Subscriber;
-import org.gazebosim.transport.SubscriberCallback;
 
-import msgs.gazebo.msgs.ImageStampedOuterClass.ImageStamped;
-import msgs.nav_msgs.msgs.OdometryOuterClass.Odometry;
-import msgs.sensor_msgs.msgs.GroundtruthOuterClass.Groundtruth;
+import sensor_msgs.msgs.GroundtruthOuterClass.Groundtruth;
 
 public class GroundTruthExample {
 	
@@ -24,7 +21,7 @@ public class GroundTruthExample {
 			node.waitForConnection();
 		
 			
-			sub = node.subscribe("iris_vision/groundtruth", Groundtruth.getDefaultInstance(), 
+			sub = node.subscribe("iris/groundtruth", Groundtruth.getDefaultInstance(), 
 			 (m) -> {
 				 System.out.println(m.getTimeUsec()+":"+m.getVelocityUp());
 				synchronized(sub) {

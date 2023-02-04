@@ -3,10 +3,7 @@ package org.gazebosim.examples;
 import org.gazebosim.transport.Node;
 import org.gazebosim.transport.Subscriber;
 
-import msgs.gazebo.msgs.AnyOuterClass.Any;
-import msgs.gazebo.msgs.ImageOuterClass.Image;
-import msgs.gazebo.msgs.ImageStampedOuterClass.ImageStamped;
-import msgs.gazebo.msgs.ImagesStampedOuterClass.ImagesStamped;
+import gazebo.msgs.ImageStampedOuterClass.ImageStamped;
 
 public class StereoCameraExample {
 	

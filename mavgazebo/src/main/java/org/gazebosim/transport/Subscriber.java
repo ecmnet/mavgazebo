@@ -16,7 +16,7 @@ import com.google.protobuf.InvalidProtocolBufferException;
 import com.google.protobuf.Message;
 import com.google.protobuf.Parser;
 
-import msgs.gazebo.msgs.SubscribeOuterClass.Subscribe;
+import gazebo.msgs.SubscribeOuterClass.Subscribe;
 
 
 public class Subscriber<T extends Message> {
@@ -70,11 +70,14 @@ public class Subscriber<T extends Message> {
 					connections.remove(conn);
 					return;
 				}
+				
 			    try {
 				  T msg = deserializer.parseFrom(data);
 				cb.callback(msg);
 			    } catch(InvalidProtocolBufferException p) {
 			    	System.err.println(p.getMessage());
+			    	connections.remove(conn);
+					return;
 			    }
 			}
 		} catch (IOException e) {

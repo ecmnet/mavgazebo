@@ -2,12 +2,8 @@ package org.gazebosim.examples;
 
 import org.gazebosim.transport.Node;
 import org.gazebosim.transport.Subscriber;
-import org.gazebosim.transport.SubscriberCallback;
 
-import msgs.gazebo.msgs.ImageStampedOuterClass.ImageStamped;
-import msgs.nav_msgs.msgs.OdometryOuterClass.Odometry;
-import msgs.sensor_msgs.msgs.GroundtruthOuterClass.Groundtruth;
-import msgs.sensor_msgs.msgs.OpticalFlowOuterClass.OpticalFlow;
+import sensor_msgs.msgs.OpticalFlowOuterClass.OpticalFlow;
 
 public class OpticalFlowExample {
 	

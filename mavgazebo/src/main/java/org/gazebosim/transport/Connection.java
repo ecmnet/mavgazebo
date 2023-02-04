@@ -8,23 +8,31 @@
 package org.gazebosim.transport;
 
 import java.io.BufferedInputStream;
-import java.io.BufferedOutputStream;
+import java.io.BufferedReader;
+import java.io.DataInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.net.ConnectException;
 import java.net.InetAddress;
+import java.net.InetSocketAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.net.SocketAddress;
+import java.net.StandardSocketOptions;
 import java.net.UnknownHostException;
+import java.nio.ByteBuffer;
+import java.nio.channels.ByteChannel;
+import java.nio.channels.SocketChannel;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import com.google.protobuf.ByteString;
 import com.google.protobuf.Message;
 
-import msgs.gazebo.msgs.PacketOuterClass.Packet;
-import msgs.gazebo.msgs.TimeOuterClass.Time;
+import gazebo.msgs.PacketOuterClass.Packet;
+import gazebo.msgs.TimeOuterClass.Time;
 
 
 /**
@@ -43,37 +51,42 @@ public class Connection {
 	
 	private Socket socket;
 	private ServerSocket ssocket;
-	private InputStream is;
 	private OutputStream os;
+	
+	private ByteBuffer buf = ByteBuffer.allocateDirect (1024*8192);
+	private byte[] buf_header = new byte[HEADER_SIZE];
+	private SocketChannel chan;
+	private int size;
 	
 	private static final Logger LOG = Logger.getLogger("Gazebo Transport");
 
 	public void connect(String host, int port) throws UnknownHostException, IOException {
-		this.host = host;
-		this.port = port;
-		socket = new Socket(host, port);
-		socket.setReceiveBufferSize(8192*1024);
-		is = socket.getInputStream();
-		os = socket.getOutputStream();
+		final SocketAddress socketAddr = new InetSocketAddress (host, port);
+		chan = SocketChannel.open ();
+		chan.connect (socketAddr);
+		buf.limit (0);
+		os = chan.socket().getOutputStream();
 	}
 
 	public boolean connectAndWait(String host, int port) throws IOException, InterruptedException {
 		this.host = host;
 		this.port = port;
+		final SocketAddress socketAddr = new InetSocketAddress (host, port);
 		int count = 2;
 		while (--count > 0) {
 			try {
-				socket = new Socket(host, port);
-				socket.setReceiveBufferSize(8192*1024);
+			    chan = SocketChannel.open ();
+				chan.connect (socketAddr);
 				break;
 			} catch (ConnectException ex) {
+				ex.printStackTrace();
 				Thread.sleep(5000);
 			}
 		}
 		if(count == 0)
 			return false;
-		is = socket.getInputStream();
-		os = socket.getOutputStream();
+		buf.limit (0);
+		  os = chan.socket().getOutputStream();
 		return true;
 	}
 
@@ -98,7 +111,6 @@ public class Connection {
 					Connection conn = new Connection();
 					try {
 						conn.socket = ssocket.accept();
-						conn.is = conn.socket.getInputStream();
 						conn.os = conn.socket.getOutputStream();
 						LOG.info("Handling connect from "+conn.socket.getInetAddress());
 						cb.handle(conn);
@@ -112,10 +124,9 @@ public class Connection {
 
 	public void close() throws IOException {
 		LOG.info("Closing connection");
-		if (socket != null) {
-			socket.close();
-			socket = null;
-		}
+		if(chan!=null)
+		  chan.close();
+		
 		if (ssocket != null) {
 			ssocket.close();
 			ssocket = null;
@@ -123,27 +134,21 @@ public class Connection {
 	}
 	
 	public byte[] rawRead() throws IOException {
-		synchronized (is) {
-			// Figure out the message size
-			byte[] buff= new byte[HEADER_SIZE];
-			int n = is.read(buff);
-			if (n != HEADER_SIZE) {
-				LOG.severe("Only read "+n+" bytes instead of 8 for header.");
-				return null;
-			}
-
-			int size=0;
-			try {
-			   size = Integer.parseInt(new String(buff), 16);
-			} catch(NumberFormatException e) { }
+		ensure(HEADER_SIZE,buf,chan);
+		buf.get(buf_header);
 		
-			// Read in the actual message
-			buff = new byte[size];
-			n = is.read(buff);
-			
-			return buff;
-		}
+		try {
+		   size = Integer.parseInt(new String(buf_header), 16);
+		} catch(NumberFormatException e) { }
+		
+		byte[] buf_data = new byte[size];
+		ensure(size,buf,chan);
+		buf.get(buf_data);
+		
+		return buf_data;
+		
 	}
+
 	
 	public Packet read() throws IOException {
 		byte[] buff = rawRead();
@@ -170,5 +175,21 @@ public class Connection {
 							.setSerializedData(req.toByteString()).build();
 		write(pack);
 	}
+	
+	private void ensure (int len, ByteBuffer buf, ByteChannel chan) throws IOException
+    {
+        if (buf.position() > buf.capacity () - len) {
+            buf.compact ();
+            buf.flip ();
+        }
+        while (buf.remaining () < len) {
+            int oldpos = buf.position ();
+            buf.position (buf.limit ());
+            buf.limit (buf.capacity ());
+            chan.read (buf);
+            buf.limit (buf.position ());
+            buf.position (oldpos);
+        }
+    }
 
 }

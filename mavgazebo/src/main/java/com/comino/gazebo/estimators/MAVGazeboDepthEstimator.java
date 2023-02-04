@@ -1,0 +1,425 @@
+package com.comino.gazebo.estimators;
+
+
+import java.awt.Color;
+import java.awt.Graphics2D;
+import java.util.List;
+import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.BlockingQueue;
+
+import com.comino.gazebo.libvision.boofcv.StreamGazeboVision;
+import com.comino.mavcom.config.MSPConfig;
+import com.comino.mavcom.config.MSPParams;
+import com.comino.mavcom.control.IMAVMSPController;
+import com.comino.mavcom.messaging.MessageBus;
+import com.comino.mavcom.messaging.msgs.msp_msg_nn_object;
+import com.comino.mavcom.model.DataModel;
+import com.comino.mavcom.model.segment.Status;
+import com.comino.mavmap.map.map3D.impl.octree.LocalMap3D;
+import com.comino.mavodometry.estimators.MAVAbstractEstimator;
+import com.comino.mavodometry.estimators.inference.YoloDetection;
+import com.comino.mavodometry.video.IVisualStreamHandler;
+import com.comino.mavodometry.video.impl.AbstractOverlayListener;
+import com.comino.mavutils.workqueue.WorkQueue;
+
+import boofcv.struct.distort.Point2Transform2_F64;
+import boofcv.struct.geo.Point2D3D;
+import boofcv.struct.image.GrayU16;
+import boofcv.struct.image.GrayU8;
+import boofcv.struct.image.Planar;
+import georegression.geometry.GeometryMath_F64;
+import georegression.struct.point.Point2D_F64;
+import georegression.struct.point.Point3D_F64;
+import georegression.struct.point.Vector3D_F64;
+import georegression.struct.se.Se3_F64;
+
+
+public class MAVGazeboDepthEstimator extends MAVAbstractEstimator  {
+
+	private static final int              DEPTH_RATE    = 100;
+	
+	private final StreamGazeboVision vis;
+
+	// mounting offset in m
+	private static final double   	      OFFSET_X 		=  -0.06;
+	private static final double      	  OFFSET_Y 		=   0.00;
+	private static final double      	  OFFSET_Z 		=   0.00;
+
+	private final static float            MIN_DEPTH_M  	= 0.3f;
+	private final static float            MAX_DEPTH_M 	= 5.0f;
+
+	private final static int              DEPTH_SCALE   = 2; 
+	private final static int 			  DEPTH_OFFSET  = 10;
+
+
+	private boolean 					enableStream  	= false;
+	private Point2Transform2_F64 		p2n      		= null;
+
+	private final Se3_F64       		to_ned          = new Se3_F64();
+	private final Point2D3D             nearest_body    = new Point2D3D();
+	private final Vector3D_F64          offset_body		= new Vector3D_F64();
+
+	private long   						tms 			= 0;
+
+	private final WorkQueue  wq  = WorkQueue.getInstance();
+	private final MessageBus bus = MessageBus.getInstance();
+
+	private final BlockingQueue<GrayU16> transfer_depth = new ArrayBlockingQueue<GrayU16>(10);
+	private int   depth_worker;
+
+	private final LocalMap3D map;
+	private final IVisualStreamHandler<Planar<GrayU8>> stream;
+
+	private final Planar<GrayU8>       depth_colored;
+	private       List<YoloDetection>  detection;
+	private final Point2D3D            per_p = new Point2D3D();
+
+	public <T> MAVGazeboDepthEstimator(IMAVMSPController control,  MSPConfig config, LocalMap3D map, int width, int height, IVisualStreamHandler<Planar<GrayU8>> stream) {
+		super(control);
+
+		this.per_p.location.setTo(Double.NaN,Double.NaN,Double.NaN);
+
+		this.stream = stream;
+
+		// read offset settings
+		offset_body.x = config.getFloatProperty(MSPParams.OAKD_OFFSET_X, String.valueOf(OFFSET_X));
+		offset_body.y = config.getFloatProperty(MSPParams.OAKD_OFFSET_Y, String.valueOf(OFFSET_Y));
+		offset_body.z = config.getFloatProperty(MSPParams.OAKD_OFFSET_Z, String.valueOf(OFFSET_Z));
+		
+		System.out.println("Gazebo Depth Estimator started..");
+		
+		
+		vis = StreamGazeboVision.getInstance(640,480);
+
+
+		this.map = map;
+
+		this.depth_colored = new Planar<GrayU8>(GrayU8.class,width,height,3);
+
+		if(stream!=null) {
+			stream.registerOverlayListener(new DepthOverlayListener(model));
+		}
+		
+		vis.registerCallback((tms, image) ->  {
+			
+			if((System.currentTimeMillis() - tms) < 20)
+				return;
+
+			model.slam.fps = (model.slam.fps * 0.75f + ((float)(1000f / (System.currentTimeMillis()-tms)) -0.5f) * 0.25f);
+			tms = System.currentTimeMillis();	
+
+			model.slam.tms = DataModel.getSynchronizedPX4Time_us();
+			model.slam.quality = 10;
+			model.sys.setSensor(Status.MSP_SLAM_AVAILABILITY, true);
+			
+//			if(transfer_depth.offer(image))
+//				MSP3DUtils.convertModelToSe3_F64(model, to_ned);
+			
+			for(int x = DEPTH_OFFSET; x < image.width-DEPTH_OFFSET;x = x + DEPTH_SCALE) {
+				for(int y = 5; y < image.height-5;y = y + DEPTH_SCALE) {	
+					 colorize(x,y,image,depth_colored,32768);
+				}
+			}
+			
+
+			// Add image to stream
+			if(stream!=null && enableStream) {
+				stream.addToStream("DEPTH",depth_colored, model, System.currentTimeMillis());	
+			}
+			
+		});
+
+	}
+
+	public void start() throws Exception {
+		if(vis!=null) {
+			vis.start();
+//			Thread.sleep(500);
+//			depth_worker = wq.addCyclicTask("LP",DEPTH_RATE, new DepthHandler());
+//			System.out.println("Depth worker started");
+
+		}
+	}
+
+	public void stop() {
+		if(vis!=null) {
+			vis.stop();
+			wq.removeTask("LP", depth_worker);
+		}
+	}
+
+	public void enableStream(boolean enable) {
+		this.enableStream = enable;
+	}
+	
+
+
+	/*
+	 * Overlay for nearest obstacle
+	 * TODO: Overlay for person detected
+	 */
+	private class DepthOverlayListener extends AbstractOverlayListener {
+
+		public DepthOverlayListener(DataModel model) {
+			super(model);
+		}
+
+		@Override
+		public void processOverlay(Graphics2D ctx, String stream_name, long tms_usec) {
+
+			if(!enableStream)
+				return;
+
+			drawMinDist(ctx, stream_name, (int)nearest_body.observation.x, (int)nearest_body.observation.y);
+
+		}
+
+		private void drawMinDist(Graphics2D ctx, String stream,int x0, int y0) {
+
+			if(stream.contains("DEPTH")) {
+
+				if((x0==0 && y0 == 0))
+					return;
+
+				if(Float.isFinite(model.slam.dm)) {
+					drawTriangle(ctx,x0,y0, Color.WHITE);
+				}
+
+				if(Double.isFinite(per_p.location.x)) {
+					drawTriangle(ctx,(int)per_p.observation.x, (int)per_p.observation.y,Color.CYAN);
+				}
+
+				ctx.drawLine(10,8,10,29);
+				ctx.setFont(big);
+				if(Float.isFinite(model.slam.dm))
+					ctx.drawString(onedecimal.format(model.slam.dm), 15, 18);
+				else
+					ctx.drawString("-", 15, 18);
+				ctx.setFont(small);
+				ctx.drawString("distance",15,29);
+
+			}
+
+		}
+	}
+	
+	private void colorize(int x, int y, GrayU16 in, Planar<GrayU8> out, int max) {
+
+		int r, g, b; 			
+		int v = in.get(x, y);
+		
+
+		if (v == 0 || v > max) {
+			r = b = g = 60;
+		} else {
+			b = 255*v/max;
+			r = 255*(max - v - 1)/max;
+			g = r / 8;
+		}
+		for(int xs = 0; xs < DEPTH_SCALE;xs++)
+			for(int ys = 0; ys < DEPTH_SCALE;ys++)
+				out.set24u8(x+xs, y+ys, r << 16 | g << 8 | b );
+	}
+
+
+	private void drawTriangle(Graphics2D ctx, int x0, int y0, Color color) {
+		final int ln = 5;
+		ctx.setColor(color);
+		ctx.drawLine(x0-ln,y0-ln,x0+ln,y0-ln);
+		ctx.drawLine(x0-ln,y0-ln,x0,y0+ln);
+		ctx.drawLine(x0,y0+ln,x0+ln,y0-ln);
+		ctx.setColor(Color.WHITE);
+	}
+
+
+	/*
+	 * Processing depth data at 10 Hz.
+	 */
+	private class DepthHandler implements Runnable {
+
+		private final Point2D_F64 norm     = new Point2D_F64();
+		private final Point3D_F64 ned_pt_n = new Point3D_F64();
+
+		private final Point2D3D   tmp_p = new Point2D3D();
+		private final Point2D3D   ned_p = new Point2D3D();
+
+		private msp_msg_nn_object person = new msp_msg_nn_object();
+
+		public DepthHandler() {
+
+		}
+
+		@Override
+		public void run() {
+
+			if(transfer_depth.isEmpty())
+				return;
+
+			try {
+
+				GrayU16 depth = transfer_depth.take();
+			
+
+				model.slam.quality = depthMapping(depth);
+
+				GeometryMath_F64.mult(to_ned.R, nearest_body.location, ned_pt_n );
+				ned_pt_n.plusIP(to_ned.T);
+
+				if(detection != null) {
+					synchronized(this) {
+						// TODO: Put detections in Queue
+						for(YoloDetection n : detection) {
+							// check for persion and estimate the position
+							if(n.id == 0 && determineObjectPosition(n, depth, per_p)) {
+								person.tms = System.currentTimeMillis();
+								break;
+							}	
+						}
+					}
+				}
+
+
+				if(person.tms > 0 && (System.currentTimeMillis() - person.tms) > 500) {
+					person.tms = 0;
+					bus.publish(person);
+					per_p.location.setTo(Double.NaN,Double.NaN,Double.NaN);
+				}
+
+				transfer_depth.clear();
+
+			} catch (InterruptedException e) {
+				e.printStackTrace();
+			}
+		}	
+
+		private boolean determineObjectPosition(YoloDetection n, GrayU16 in, Point2D3D p) {
+
+			// TODO: This is dangerous as another object detected of not detected could be in front
+			//       of the person => wrong depth estimation
+
+			int xc = (n.xmax-n.xmin) / 2 + n.xmin ; int yc = (n.ymax-n.ymin) / 2 + n.ymin;
+
+			// if person covers too much of the picture => no valid estimation
+			if((n.xmax-n.xmin) > 320)
+				return false;
+
+			// use multiple measurement points around the center for depth estimation
+			int count = 0; int min_d = 0; int tmp_d = 0;
+			tmp_d = in.get(xc  , yc   ); if(tmp_d < 6000 && tmp_d > 200) { min_d += tmp_d; count++; }
+			tmp_d = in.get(xc+10,yc   ); if(tmp_d < 6000 && tmp_d > 200) { min_d += tmp_d; count++; }
+			tmp_d = in.get(xc-10,yc   ); if(tmp_d < 6000 && tmp_d > 200) { min_d += tmp_d; count++; }
+			tmp_d = in.get(xc  , yc+10); if(tmp_d < 6000 && tmp_d > 200) { min_d += tmp_d; count++; }
+			tmp_d = in.get(xc  , yc-10); if(tmp_d < 6000 && tmp_d > 200) { min_d += tmp_d; count++; }
+			tmp_d = in.get(xc  , yc+30); if(tmp_d < 6000 && tmp_d > 200) { min_d += tmp_d; count++; }
+			tmp_d = in.get(xc  , yc-30); if(tmp_d < 6000 && tmp_d > 200) { min_d += tmp_d; count++; }
+
+			if(count == 0)
+				return false;
+
+			min_d = min_d / count;
+
+			p.observation.x = xc;
+			p.observation.y = yc;
+
+			if(min_d > 6000 || min_d < 200 ) {
+				return false;
+			}
+
+			p2n.compute(p.observation.x,p.observation.y,norm);
+
+			p.location.x =  min_d * 1e-3;		
+			p.location.y =  p.location.x * norm.x;
+			p.location.z =  p.location.x * norm.y;
+
+			GeometryMath_F64.mult(to_ned.R, p.location, person.position );
+			person.position.plusIP(to_ned.T);
+			person.object_id = 0;
+
+			if(control.isSimulation())
+				return true;
+
+			bus.publish(person);
+
+			return true;
+
+		}
+
+		// map depth on a 640/DEPTH_SCALE x 480/DEPTH_SCALE basis
+		private int depthMapping(GrayU16 in) {
+
+			int quality = 0; nearest_body.location.x = Double.MAX_VALUE;
+
+			for(int x = DEPTH_OFFSET; x < in.width-DEPTH_OFFSET;x = x + DEPTH_SCALE) {
+				for(int y = 5; y < in.height-5;y = y + DEPTH_SCALE) {
+
+					colorize(x,y,in,depth_colored, 9000);
+
+//					if(getSegmentPositionBody(x,y,in,tmp_p)) {
+//						GeometryMath_F64.mult(to_ned.R, tmp_p.location, ned_p.location );
+//						ned_p.location.plusIP(to_ned.T);
+//						if( Float.isFinite(model.hud.at) &&
+//								tmp_p.location.x< nearest_body.location.x && 
+//								ned_p.location.z < (-(model.hud.at+0.1f)) ) // consider terrain as ground
+//							nearest_body.setTo(tmp_p);
+//
+//						if(control.isSimulation() || !model.sys.isStatus(Status.MSP_LANDED))
+//							map.update(to_ned.T,ned_p.location);   // Incremental probability
+//						//	  map.update(to_ned.T,ned_p.location,1); // Absolute probability
+//
+//						quality++;
+//					}
+				}
+			}
+
+			if(nearest_body.location.x > MAX_DEPTH_M)
+				nearest_body.location.setTo(Double.NaN,Double.NaN,Double.NaN);
+
+			return 100;
+		}
+
+		private void colorize(int x, int y, GrayU16 in, Planar<GrayU8> out, int max) {
+
+			int r, g, b; 			
+			int v = in.get(x, y);
+
+			if (v == 0 || v > max) {
+				r = b = g = 60;
+			} else {
+				b = 255*v/max;
+				r = 255*(max - v - 1)/max;
+				g = r / 8;
+			}
+			for(int xs = 0; xs < DEPTH_SCALE;xs++)
+				for(int ys = 0; ys < DEPTH_SCALE;ys++)
+					out.set24u8(x+xs, y+ys, r << 16 | g << 8 | b );
+		}
+
+
+		// Return 3D point of depth segment in body frame
+		private boolean getSegmentPositionBody(int x, int y, GrayU16 in, Point2D3D p) {
+
+			p.observation.x = x;
+			p.observation.y = y;
+
+			p.location.x = in.get(x, y) * 1e-3;
+
+			if(p.location.x < MIN_DEPTH_M || p.location.x > MAX_DEPTH_M) {
+				p.location.x = Double.MAX_VALUE;
+				return false;
+			}
+
+			p2n.compute(p.observation.x,p.observation.y,norm);
+
+			p.location.y =   p.location.x * norm.x;
+			p.location.z =   p.location.x * norm.y;
+
+
+			p.location.plusIP(offset_body);
+
+			return true;
+
+		}
+	}
+
+}
+

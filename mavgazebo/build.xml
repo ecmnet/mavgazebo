@@ -2,7 +2,7 @@
 
 	<target name="protoc">
 	    <exec dir="." executable="sh">
-			        <arg line="-c '/usr/local/Cellar/protobuf/3.19.4/bin/protoc -I=gazebo/msgs --java_out=src/main/java/ gazebo/msgs/*'" />
+			        <arg line="-c '/usr/local/Cellar/protobuf/21.12/bin/protoc -I=gazebo/msgs --java_out=src/main/java gazebo/msgs/*' "/>
 			    </exec>
 		</target>
 

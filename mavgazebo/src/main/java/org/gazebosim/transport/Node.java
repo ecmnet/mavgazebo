@@ -23,13 +23,12 @@ import java.util.logging.Logger;
 import com.google.protobuf.InvalidProtocolBufferException;
 import com.google.protobuf.Message;
 
-import msgs.gazebo.msgs.GzString;
-import msgs.gazebo.msgs.GzStringOuterClass;
-import msgs.gazebo.msgs.PacketOuterClass.Packet;
-import msgs.gazebo.msgs.PublishOuterClass.Publish;
-import msgs.gazebo.msgs.PublishersOuterClass.Publishers;
-import msgs.gazebo.msgs.StringV.String_V;
-import msgs.gazebo.msgs.SubscribeOuterClass.Subscribe;
+import gazebo.msgs.GzString;
+import gazebo.msgs.PacketOuterClass.Packet;
+import gazebo.msgs.PublishOuterClass.Publish;
+import gazebo.msgs.PublishersOuterClass.Publishers;
+import gazebo.msgs.SubscribeOuterClass.Subscribe;
+import gazebo.msgs.StringV.String_V;
 
 public class Node implements Runnable, ServerCallback {
 	private final String name;

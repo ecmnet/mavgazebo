@@ -2,10 +2,8 @@ package org.gazebosim.examples;
 
 import org.gazebosim.transport.Node;
 import org.gazebosim.transport.Subscriber;
-import org.gazebosim.transport.SubscriberCallback;
 
-import msgs.gazebo.msgs.ImageStampedOuterClass.ImageStamped;
-import msgs.nav_msgs.msgs.OdometryOuterClass.Odometry;
+import nav_msgs.msgs.OdometryOuterClass.Odometry;
 
 public class OdometryExample {
 	

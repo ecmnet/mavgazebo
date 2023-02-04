@@ -3,10 +3,7 @@ package org.gazebosim.examples;
 import org.gazebosim.transport.Node;
 import org.gazebosim.transport.Subscriber;
 
-import msgs.gazebo.msgs.AnyOuterClass.Any;
-import msgs.gazebo.msgs.ImageOuterClass.Image;
-import msgs.gazebo.msgs.ImageStampedOuterClass.ImageStamped;
-import msgs.gazebo.msgs.ImagesStampedOuterClass.ImagesStamped;
+import gazebo.msgs.ImageStampedOuterClass.ImageStamped;
 
 public class DepthCameraExample {
 	
@@ -15,7 +12,8 @@ public class DepthCameraExample {
 	
 	private static ImageStamped msg;
 
-
+    static long  tms0;
+	
 	public static void main(String[] args) {
 		
 
@@ -25,12 +23,13 @@ public class DepthCameraExample {
 		try {
 			node.waitForConnection();
 			
-			sub = node.subscribe("iris_vision/depth_camera/link/depth_camera/image ", ImageStamped.getDefaultInstance(), 
+			System.out.println("Connected");
+			
+			sub = node.subscribe("iris/depth_camera/link/depth_camera/image", ImageStamped.getDefaultInstance(), 
 			 (m) -> {
-				System.out.println(m);
+				System.out.println(m.getClass()+":"+m.hasImage()+"/"+m.getImage().getWidth()+"*"+m.getImage().getHeight());
 				synchronized(sub) {
-					sub.notifyAll();
-					
+				sub.notify();
 			 }
 			});
 
