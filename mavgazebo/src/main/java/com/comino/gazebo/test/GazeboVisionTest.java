@@ -17,7 +17,7 @@ public class GazeboVisionTest {
 	public static void main(String[] args)  {
 		
 		ImageGridPanel gui = new ImageGridPanel(1, 1);
-		gui.setImage(0, 0, new BufferedImage(640, 480, BufferedImage.TYPE_USHORT_GRAY));
+		gui.setImage(0, 0, new BufferedImage(640,480, BufferedImage.TYPE_3BYTE_BGR));
 		gui.autoSetPreferredSize();
 		
 		ShowImages.showWindow(gui, "Gazebo Depth cam", true);
@@ -26,7 +26,7 @@ public class GazeboVisionTest {
 			
 			StreamGazeboVision vis = StreamGazeboVision.getInstance(640,480);
 			
-			vis.registerCallback((tms, image) ->  {
+			vis.registerRGBCallback((tms, image) ->  {
 				ConvertBufferedImage.convertTo(image, gui.getImage(0, 0), true);
 				gui.repaint();
 			});

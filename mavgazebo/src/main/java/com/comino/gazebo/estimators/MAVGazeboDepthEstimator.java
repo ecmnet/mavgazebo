@@ -15,6 +15,7 @@ import com.comino.mavcom.messaging.MessageBus;
 import com.comino.mavcom.messaging.msgs.msp_msg_nn_object;
 import com.comino.mavcom.model.DataModel;
 import com.comino.mavcom.model.segment.Status;
+import com.comino.mavmap.map.map3D.impl.octomap.MAVOctoMap3D;
 import com.comino.mavmap.map.map3D.impl.octree.LocalMap3D;
 import com.comino.mavodometry.estimators.MAVAbstractEstimator;
 import com.comino.mavodometry.estimators.inference.YoloDetection;
@@ -60,6 +61,7 @@ public class MAVGazeboDepthEstimator extends MAVAbstractEstimator  {
 	private final Vector3D_F64          offset_body		= new Vector3D_F64();
 
 	private long   						tms 			= 0;
+	private long   						tms_old     	= 0;
 
 	private final WorkQueue  wq  = WorkQueue.getInstance();
 	private final MessageBus bus = MessageBus.getInstance();
@@ -67,14 +69,13 @@ public class MAVGazeboDepthEstimator extends MAVAbstractEstimator  {
 	private final BlockingQueue<GrayU16> transfer_depth = new ArrayBlockingQueue<GrayU16>(10);
 	private int   depth_worker;
 
-	private final LocalMap3D map;
 	private final IVisualStreamHandler<Planar<GrayU8>> stream;
 
 	private final Planar<GrayU8>       depth_colored;
 	private       List<YoloDetection>  detection;
 	private final Point2D3D            per_p = new Point2D3D();
 
-	public <T> MAVGazeboDepthEstimator(IMAVMSPController control,  MSPConfig config, LocalMap3D map, int width, int height, IVisualStreamHandler<Planar<GrayU8>> stream) {
+	public <T> MAVGazeboDepthEstimator(IMAVMSPController control,  MSPConfig config, MAVOctoMap3D map, int width, int height, IVisualStreamHandler<Planar<GrayU8>> stream) {
 		super(control);
 
 		this.per_p.location.setTo(Double.NaN,Double.NaN,Double.NaN);
@@ -91,25 +92,22 @@ public class MAVGazeboDepthEstimator extends MAVAbstractEstimator  {
 		
 		vis = StreamGazeboVision.getInstance(640,480);
 
-
-		this.map = map;
-
 		this.depth_colored = new Planar<GrayU8>(GrayU8.class,width,height,3);
 
 		if(stream!=null) {
 			stream.registerOverlayListener(new DepthOverlayListener(model));
 		}
 		
-		vis.registerCallback((tms, image) ->  {
+		vis.registerDepthCallback((tms, image) ->  {
 			
-			if((System.currentTimeMillis() - tms) < 20)
+			if((tms - tms_old) < 20)
 				return;
 
-			model.slam.fps = (model.slam.fps * 0.75f + ((float)(1000f / (System.currentTimeMillis()-tms)) -0.5f) * 0.25f);
-			tms = System.currentTimeMillis();	
+			model.slam.fps = (model.slam.fps * 0.75f + ((float)(1000f / (tms-tms_old)) -0.5f) * 0.25f);
+			tms_old = System.currentTimeMillis();	
 
 			model.slam.tms = DataModel.getSynchronizedPX4Time_us();
-			model.slam.quality = 10;
+			model.slam.quality = 60;
 			model.sys.setSensor(Status.MSP_SLAM_AVAILABILITY, true);
 			
 //			if(transfer_depth.offer(image))
@@ -117,14 +115,22 @@ public class MAVGazeboDepthEstimator extends MAVAbstractEstimator  {
 			
 			for(int x = DEPTH_OFFSET; x < image.width-DEPTH_OFFSET;x = x + DEPTH_SCALE) {
 				for(int y = 5; y < image.height-5;y = y + DEPTH_SCALE) {	
-					 colorize(x,y,image,depth_colored,32768);
+					 colorize(x,y,image,depth_colored,65535);
 				}
 			}
 			
-
 			// Add image to stream
 			if(stream!=null && enableStream) {
 				stream.addToStream("DEPTH",depth_colored, model, System.currentTimeMillis());	
+			}
+			
+		});
+		
+        vis.registerRGBCallback((tms, image) ->  {
+        	model.sys.setSensor(Status.MSP_OPCV_AVAILABILITY, true);
+			// Add image to stream
+			if(stream!=null && enableStream) {
+				stream.addToStream("RGB",image, model, System.currentTimeMillis());	
 			}
 			
 		});
